@@ -53,6 +53,9 @@ class Job(BaseModel):
     ghost_audit: Optional[GhostJobAudit] = None
     interview_blueprint: Optional[InterviewBlueprint] = None
     application_pitch: Optional[ApplicationPitch] = None
+    resume_match_score: Optional[float] = None
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills_gap: List[str] = Field(default_factory=list)
 
     @staticmethod
     def generate_dedup_key(company: str, title: str, location: Optional[str]) -> str:

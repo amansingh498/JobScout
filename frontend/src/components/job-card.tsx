@@ -60,10 +60,17 @@ export function JobCard({ job, rank }: JobCardProps) {
           </div>
         </div>
 
-        {/* Action badges: Legitimacy + Match Score */}
+        {/* Action badges: Legitimacy + Resume Fit + Match Score */}
         <div className="flex items-center gap-2 flex-wrap">
           <GhostJobBadge audit={job.ghost_audit} />
           
+          {job.resume_match_score !== undefined && job.resume_match_score !== null && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/15 text-indigo-300 font-bold text-xs shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{Math.round(job.resume_match_score)}% Resume Fit</span>
+            </div>
+          )}
+
           <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-bold text-sm ${getScoreColor(job.match_score)}`}>
             <Award className="w-4 h-4" />
             <span>{job.match_score || 0}% Match</span>
@@ -114,8 +121,42 @@ export function JobCard({ job, rank }: JobCardProps) {
         </div>
       </div>
 
-      {/* Skills */}
-      {job.skills && job.skills.length > 0 && (
+      {/* 🎯 Resume Skills Alignment: Matched vs Skill Gaps */}
+      {job.matched_skills && job.matched_skills.length > 0 ? (
+        <div className="space-y-2 pt-1">
+          {/* Matched from Resume */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Resume Matches:
+            </span>
+            {job.matched_skills.map((skill, i) => (
+              <span
+                key={i}
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-200 border border-emerald-500/30 flex items-center gap-1 shadow-sm"
+              >
+                ✓ {skill}
+              </span>
+            ))}
+          </div>
+
+          {/* Skill Gaps to Prepare */}
+          {job.missing_skills_gap && job.missing_skills_gap.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Skill Gaps (To Prep):
+              </span>
+              {job.missing_skills_gap.map((skill, i) => (
+                <span
+                  key={i}
+                  className="text-xs font-medium px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : job.skills && job.skills.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Skills:</span>
           {job.skills.map((skill, i) => (
@@ -127,7 +168,7 @@ export function JobCard({ job, rank }: JobCardProps) {
             </span>
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Missing Fields Flag if any */}
       {job.missing_fields && job.missing_fields.length > 0 && (

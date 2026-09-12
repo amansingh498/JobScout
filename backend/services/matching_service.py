@@ -102,4 +102,43 @@ class MatchingService:
         total_score = sum(score_breakdown.values())
         job.match_score = round(total_score, 1)
         job.score_breakdown = score_breakdown
+
+        # 6. Resume Specific Skill Matching & Gap Analysis
+        candidate_skills = prefs.resume_skills if prefs.resume_skills else prefs.skills
+        if candidate_skills:
+            cand_skills_lower = {s.lower().strip(): s for s in candidate_skills}
+            job_skills_lower = {s.lower().strip(): s for s in job.skills}
+            
+            matched = []
+            missing = []
+
+            # Check which job skills are in candidate resume
+            for js_low, js_orig in job_skills_lower.items():
+                is_matched = False
+                for cs_low in cand_skills_lower.keys():
+                    if cs_low in js_low or js_low in cs_low:
+                        is_matched = True
+                        matched.append(js_orig)
+                        break
+                if not is_matched:
+                    missing.append(js_orig)
+
+            # Check if any candidate skills appear in job description text if not explicitly listed in job.skills
+            job_desc_lower = (job.description or "").lower()
+            for cs_low, cs_orig in cand_skills_lower.items():
+                if cs_low in job_desc_lower and cs_orig not in matched:
+                    matched.append(cs_orig)
+
+            job.matched_skills = list(dict.fromkeys(matched))
+            job.missing_skills_gap = list(dict.fromkeys(missing))
+
+            # Resume match score calculation
+            total_target = max(len(job.skills), 1)
+            job.resume_match_score = round(min(100.0, (len(job.matched_skills) / total_target) * 100.0), 1)
+        else:
+            job.matched_skills = job.skills[:3] if job.skills else []
+            job.missing_skills_gap = job.skills[3:] if len(job.skills) > 3 else []
+            job.resume_match_score = job.match_score
+
         return job.match_score, score_breakdown
+

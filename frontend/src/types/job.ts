@@ -6,6 +6,17 @@ export interface UserPreferences {
   remote_allowed: boolean;
   skills: string[];
   employment_type: string;
+  resume_text?: string | null;
+  resume_skills?: string[];
+  resume_filename?: string | null;
+}
+
+export interface ResumeParseResult {
+  filename: string;
+  resume_text: string;
+  skills: string[];
+  suggested_roles: string[];
+  word_count: number;
 }
 
 export interface ResearchEvidence {
@@ -82,6 +93,9 @@ export interface Job {
   ghost_audit?: GhostJobAudit | null;
   interview_blueprint?: InterviewBlueprint | null;
   application_pitch?: ApplicationPitch | null;
+  resume_match_score?: number | null;
+  matched_skills?: string[];
+  missing_skills_gap?: string[];
 }
 
 export interface SearchRequest {

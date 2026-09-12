@@ -9,3 +9,7 @@ class UserPreferences(BaseModel):
     remote_allowed: bool = Field(default=True, description="Whether remote positions are acceptable")
     skills: List[str] = Field(default_factory=list, description="Key skills, e.g., ['Python', 'React']")
     employment_type: str = Field(default="Internship", description="Internship | Full-time | Contract")
+    resume_text: Optional[str] = Field(default=None, description="Extracted plain text from candidate's resume")
+    resume_skills: List[str] = Field(default_factory=list, description="Extracted skills list from candidate's resume")
+    resume_filename: Optional[str] = Field(default=None, description="Uploaded resume file name")
+
