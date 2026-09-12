@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserPreferences, ResumeParseResult } from '@/types/job';
 import { createSearch, uploadAndParseResume } from '@/lib/api';
 import { 
   Sparkles, Plus, X, Search, DollarSign, MapPin, 
-  Briefcase, Code, Upload, FileText, CheckCircle2, AlertCircle, Loader2 
+  Briefcase, Code, Upload, FileText, CheckCircle2, AlertCircle, 
+  Loader2, Trash2, FileCheck, RefreshCw 
 } from 'lucide-react';
+
+const STORAGE_KEY = 'jobscout_saved_resume_v1';
 
 export function PreferenceForm() {
   const router = useRouter();
@@ -16,12 +19,12 @@ export function PreferenceForm() {
   const [error, setError] = useState<string | null>(null);
 
   // Resume state
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const [resumeText, setResumeText] = useState<string | null>(null);
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeSuccess, setResumeSuccess] = useState<string | null>(null);
+  const [isSavedInStorage, setIsSavedInStorage] = useState(false);
 
   // Form states
   const [targetRoles, setTargetRoles] = useState<string[]>(['Software Engineering Intern']);
@@ -38,11 +41,37 @@ export function PreferenceForm() {
   const [employmentType, setEmploymentType] = useState('Internship');
   const [remoteAllowed, setRemoteAllowed] = useState(true);
 
+  // Load saved resume from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.filename && data.skills) {
+          setResumeFileName(data.filename);
+          setResumeText(data.resume_text || '');
+          setResumeSkills(data.skills || []);
+          setIsSavedInStorage(true);
+          setResumeSuccess(`Loaded saved resume: ${data.filename}`);
+
+          // Merge saved skills into search skills
+          if (data.skills && data.skills.length > 0) {
+            setSkills(prev => Array.from(new Set([...prev, ...data.skills])));
+          }
+          if (data.suggested_roles && data.suggested_roles.length > 0) {
+            setTargetRoles(data.suggested_roles);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load saved resume from storage:', e);
+    }
+  }, []);
+
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setResumeFile(file);
     setResumeFileName(file.name);
     setIsUploadingResume(true);
     setResumeSuccess(null);
@@ -52,21 +81,51 @@ export function PreferenceForm() {
       const parsed: ResumeParseResult = await uploadAndParseResume(file);
       setResumeText(parsed.resume_text);
       setResumeSkills(parsed.skills);
+      setIsSavedInStorage(true);
       
       // Auto-merge newly parsed skills into search criteria
       const mergedSkills = Array.from(new Set([...skills, ...parsed.skills]));
       setSkills(mergedSkills);
 
-      // If suggested roles exist and current roles are default, suggest them
+      // If suggested roles exist, populate target roles
       if (parsed.suggested_roles && parsed.suggested_roles.length > 0) {
         setTargetRoles(parsed.suggested_roles);
       }
 
-      setResumeSuccess(`Parsed ${parsed.skills.length} skills from ${file.name}`);
+      // Persist in localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          filename: file.name,
+          resume_text: parsed.resume_text,
+          skills: parsed.skills,
+          suggested_roles: parsed.suggested_roles,
+          saved_at: new Date().toISOString()
+        }));
+      } catch (saveErr) {
+        console.warn('Could not save to localStorage:', saveErr);
+      }
+
+      setResumeSuccess(`Parsed & saved ${parsed.skills.length} skills from ${file.name}`);
     } catch (err: any) {
       setError(err.message || 'Failed to parse resume file');
     } finally {
       setIsUploadingResume(false);
+    }
+  };
+
+  const handleRemoveResume = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn(e);
+    }
+    setResumeFileName(null);
+    setResumeText(null);
+    setResumeSkills([]);
+    setIsSavedInStorage(false);
+    setResumeSuccess(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -141,20 +200,31 @@ export function PreferenceForm() {
 
       {/* 📄 Resume Upload & ATS Matcher Card */}
       <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/40 space-y-3 shadow-lg">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
-              <FileText className="w-4 h-4" />
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shadow-inner">
+              {isSavedInStorage ? <FileCheck className="w-5 h-5 text-emerald-400" /> : <FileText className="w-5 h-5" />}
             </div>
             <div>
-              <span className="text-sm font-bold text-white flex items-center gap-2">
-                Upload Candidate Resume (PDF / TXT)
-                <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 font-bold">
-                  Auto-Skill Matcher
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-white">
+                  {resumeFileName ? `Resume: ${resumeFileName}` : 'Candidate Resume Profile (PDF / TXT)'}
                 </span>
-              </span>
-              <p className="text-xs text-slate-300">
-                Agent extracts your exact skills to calculate ATS fit & discover skill gaps.
+                {isSavedInStorage && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Saved in Profile
+                  </span>
+                )}
+                {!isSavedInStorage && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 font-bold">
+                    Auto-Skill Matcher
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {isSavedInStorage 
+                  ? 'Your resume skills are saved for future searches. You can replace or remove it anytime.'
+                  : 'Agent extracts your exact skills to calculate ATS fit & discover skill gaps.'}
               </p>
             </div>
           </div>
@@ -167,51 +237,60 @@ export function PreferenceForm() {
             className="hidden"
           />
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploadingResume}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
-          >
-            {isUploadingResume ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Extracting Skills...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                {resumeFileName ? 'Change Resume' : 'Upload Resume File'}
-              </>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingResume}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md disabled:opacity-50"
+            >
+              {isUploadingResume ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Extracting...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" />
+                  {resumeFileName ? 'Replace Resume' : 'Upload Resume'}
+                </>
+              )}
+            </button>
+
+            {resumeFileName && (
+              <button
+                type="button"
+                onClick={handleRemoveResume}
+                className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="Remove saved resume"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove</span>
+              </button>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Upload feedback & Extracted Skills preview */}
-        {resumeSuccess && (
+        {resumeSkills.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-indigo-800/50">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{resumeSuccess}</span>
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Extracted Resume Skills ({resumeSkills.length}):
+              </span>
+              <span className="text-[11px] text-indigo-300 font-medium">Applied to ATS Matcher</span>
             </div>
-
-            {resumeSkills.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                  Extracted Resume Skills:
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              {resumeSkills.map((sk, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 flex items-center gap-1 shadow-sm"
+                >
+                  ✓ {sk}
                 </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {resumeSkills.map((sk, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 flex items-center gap-1"
-                    >
-                      <CheckCircle2 className="w-3 h-3 text-indigo-300" /> {sk}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </div>
