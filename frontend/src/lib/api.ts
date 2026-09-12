@@ -31,11 +31,28 @@ async function fetchWithFallback(endpoint: string, options: RequestInit): Promis
 
   try {
     const res = await fetch(primaryUrl, options);
+    if (res.ok) {
+      return res;
+    }
+
+    // If primary returned 404 or other error, try fallback via proxy or root
+    if (typeof window !== 'undefined' && !primaryUrl.startsWith('/backend-api')) {
+      const fallbackUrl = `/backend-api/api${endpoint}`;
+      try {
+        const fallbackRes = await fetch(fallbackUrl, options);
+        if (fallbackRes.ok) {
+          return fallbackRes;
+        }
+      } catch (fallbackErr) {
+        console.warn(`Fallback proxy failed:`, fallbackErr);
+      }
+    }
+
     return res;
   } catch (primaryErr: any) {
     console.warn(`Primary fetch to ${primaryUrl} failed:`, primaryErr);
 
-    // If on client and not already using the proxy, attempt proxy fallback
+    // If on client, attempt proxy fallback
     if (typeof window !== 'undefined' && !primaryUrl.startsWith('/backend-api')) {
       const fallbackUrl = `/backend-api/api${endpoint}`;
       try {
@@ -54,6 +71,7 @@ async function fetchWithFallback(endpoint: string, options: RequestInit): Promis
 export async function uploadAndParseResume(file: File): Promise<ResumeParseResult> {
   const formData = new FormData();
   formData.append('file', file);
+  const targetUrl = `${getApiBase()}/resume/parse`;
 
   try {
     const res = await fetchWithFallback('/resume/parse', {
@@ -62,20 +80,21 @@ export async function uploadAndParseResume(file: File): Promise<ResumeParseResul
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: Failed to parse resume` }));
-      throw new Error(err.detail || `Server returned error ${res.status}`);
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: Failed to reach ${targetUrl}` }));
+      throw new Error(err.detail || `Server returned error ${res.status} for ${targetUrl}`);
     }
     return await res.json();
   } catch (error: any) {
     console.error('Resume upload error:', error);
     if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
-      throw new Error(`Cannot connect to backend (${getApiBase()}). If the backend is on Render free tier, it may be waking up from sleep (~30s). Please check your NEXT_PUBLIC_API_URL in Vercel settings and redeploy.`);
+      throw new Error(`Cannot connect to backend (${getApiBase()}). If using Render free tier, it may be waking up from sleep (~30s). Please check your NEXT_PUBLIC_API_URL in Vercel settings and redeploy.`);
     }
     throw error;
   }
 }
 
 export async function createSearch(preferences: UserPreferences): Promise<{ search_id: string; status: string; message: string }> {
+  const targetUrl = `${getApiBase()}/search`;
   try {
     const res = await fetchWithFallback('/search', {
       method: 'POST',
@@ -84,14 +103,14 @@ export async function createSearch(preferences: UserPreferences): Promise<{ sear
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: Failed to create search` }));
-      throw new Error(err.detail || `Server returned error ${res.status}`);
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: Failed to reach ${targetUrl}` }));
+      throw new Error(err.detail || `Server returned error ${res.status} for ${targetUrl}`);
     }
     return await res.json();
   } catch (error: any) {
     console.error('Create search error:', error);
     if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
-      throw new Error(`Cannot connect to backend (${getApiBase()}). If the backend is on Render free tier, it may be waking up from sleep. Please wait a moment and try again.`);
+      throw new Error(`Cannot connect to backend (${getApiBase()}). If using Render free tier, it may be waking up from sleep. Please wait a moment and try again.`);
     }
     throw error;
   }

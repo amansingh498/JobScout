@@ -11,6 +11,7 @@ from backend.services.agent_orchestrator import run_job_research_agent
 router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=dict)
+@router.post("/", response_model=dict)
 async def create_search(
     preferences: UserPreferences,
     background_tasks: BackgroundTasks,
