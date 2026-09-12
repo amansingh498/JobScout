@@ -1,3 +1,4 @@
+import os
 import asyncio
 from typing import List
 from backend.schemas.job import Job, SearchRequest
@@ -82,13 +83,20 @@ async def run_job_research_agent(search_id: str, preferences: UserPreferences):
         researcher = ResearchService()
         for job in structured_jobs:
             if job.missing_fields:
-                await researcher.research_missing_fields(job)
-        await asyncio.sleep(1.0)
+                try:
+                    await asyncio.wait_for(researcher.research_missing_fields(job), timeout=3.0)
+                except Exception as e:
+                    print(f"Warning: research_missing_fields timed out or skipped for {job.company}: {e}")
+        await asyncio.sleep(0.5)
 
-        # Step 6: Scoring
-        await update_status("processing", "Calculating deterministic match scores against your criteria...", 6)
+        # Step 6: Scoring, Ghost Job Audit & Action Center Intelligence
+        await update_status("processing", "Calculating deterministic match scores, running Ghost Job audit & synthesizing Interview Blueprint...", 6)
+        from backend.services.ghost_job_service import GhostJobAuditorService
+        from backend.services.action_center_service import ActionCenterService
         for job in structured_jobs:
             MatchingService.calculate_match_score(job, preferences)
+            GhostJobAuditorService.audit_job(job)
+            ActionCenterService.generate_intelligence(job, preferences)
         await asyncio.sleep(0.5)
 
         # Step 7: Ranking

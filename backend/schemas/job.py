@@ -5,6 +5,31 @@ import hashlib
 from backend.schemas.preferences import UserPreferences
 from backend.schemas.research import ResearchEvidence
 
+class InterviewRound(BaseModel):
+    round_name: str
+    focus: str
+    difficulty: str  # Easy | Medium | Hard
+    tips: str
+
+class InterviewBlueprint(BaseModel):
+    rounds: List[InterviewRound] = Field(default_factory=list)
+    top_technical_questions: List[str] = Field(default_factory=list)
+    hiring_manager_focus: str = ""
+
+class ApplicationPitch(BaseModel):
+    cold_email: str = ""
+    linkedin_dm: str = ""
+    elevator_pitch_30s: str = ""
+    skills_to_highlight: List[str] = Field(default_factory=list)
+    quick_prep_plan: List[str] = Field(default_factory=list)
+
+class GhostJobAudit(BaseModel):
+    legitimacy_score: int = Field(default=90, description="0-100% hiring legitimacy score")
+    verdict: str = Field(default="Active & Verified", description="Active & Verified | Recent Refresh | Stale / Evergreen | High Ghost Risk")
+    days_active: int = Field(default=7, description="Estimated days since posting was first observed")
+    signals: List[Dict[str, Any]] = Field(default_factory=list, description="List of positive & risk indicators")
+    recommendation: str = Field(default="Safe to apply", description="Actionable advice for the applicant")
+
 class Job(BaseModel):
     id: str
     title: str
@@ -25,6 +50,9 @@ class Job(BaseModel):
     match_score: Optional[float] = None
     confidence_score: Optional[float] = None
     score_breakdown: Optional[Dict[str, float]] = None
+    ghost_audit: Optional[GhostJobAudit] = None
+    interview_blueprint: Optional[InterviewBlueprint] = None
+    application_pitch: Optional[ApplicationPitch] = None
 
     @staticmethod
     def generate_dedup_key(company: str, title: str, location: Optional[str]) -> str:

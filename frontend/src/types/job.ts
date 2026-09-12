@@ -18,6 +18,41 @@ export interface ResearchEvidence {
   confidence_tier?: 'Confirmed' | 'High' | 'Medium' | 'Low';
 }
 
+export interface GhostJobSignal {
+  type: 'positive' | 'warning' | 'risk' | 'neutral';
+  label: string;
+  detail: string;
+}
+
+export interface GhostJobAudit {
+  legitimacy_score: number;
+  verdict: string;
+  days_active: number;
+  signals: GhostJobSignal[];
+  recommendation: string;
+}
+
+export interface InterviewRound {
+  round_name: string;
+  focus: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
+  tips: string;
+}
+
+export interface InterviewBlueprint {
+  rounds: InterviewRound[];
+  top_technical_questions: string[];
+  hiring_manager_focus: string;
+}
+
+export interface ApplicationPitch {
+  cold_email: string;
+  linkedin_dm: string;
+  elevator_pitch_30s: string;
+  skills_to_highlight: string[];
+  quick_prep_plan: string[];
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -44,6 +79,9 @@ export interface Job {
     location: number;
     work_mode: number;
   } | null;
+  ghost_audit?: GhostJobAudit | null;
+  interview_blueprint?: InterviewBlueprint | null;
+  application_pitch?: ApplicationPitch | null;
 }
 
 export interface SearchRequest {

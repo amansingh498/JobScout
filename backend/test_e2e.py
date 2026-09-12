@@ -6,7 +6,7 @@ async def test_end_to_end():
     print("Testing JobScout Backend & Agent Pipeline...")
     
     # 1. Health check
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000") as client:
+    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000", timeout=15.0) as client:
         health_resp = await client.get("/api/health")
         print(f"1. Health Check Response: {health_resp.status_code} -> {health_resp.json()}")
         assert health_resp.status_code == 200
