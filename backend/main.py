@@ -34,17 +34,20 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for Frontend Next.js app
+# Enable CORS for all environments (Vercel, Render, Localhost, Preview domains)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include routers under /api and also root aliases to handle all client URL configs
 app.include_router(search_router, prefix="/api")
+app.include_router(search_router)
 app.include_router(resume_router, prefix="/api")
+app.include_router(resume_router)
 
 @app.get("/")
 async def root():
