@@ -1,15 +1,15 @@
 import { UserPreferences, SearchRequest, ResumeParseResult } from '@/types/job';
 
 export function getApiBase(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  let envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined') {
-    // In browser
     if (envUrl && envUrl.trim()) {
       let url = envUrl.trim().replace(/\/+$/, '');
+      // Strip accidental /search or /resume/parse or /api duplicates if user pasted the full endpoint
+      url = url.replace(/\/search$/, '').replace(/\/resume\/parse$/, '').replace(/\/+$/, '');
       if (!url.endsWith('/api')) url = `${url}/api`;
       return url;
     }
-    // If running in production (e.g. Vercel) without env var, use Next.js proxy
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       return '/backend-api/api';
     }
@@ -17,6 +17,7 @@ export function getApiBase(): string {
   
   if (envUrl && envUrl.trim()) {
     let url = envUrl.trim().replace(/\/+$/, '');
+    url = url.replace(/\/search$/, '').replace(/\/resume\/parse$/, '').replace(/\/+$/, '');
     if (!url.endsWith('/api')) url = `${url}/api`;
     return url;
   }
