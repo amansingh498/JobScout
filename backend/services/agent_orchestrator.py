@@ -48,7 +48,13 @@ async def run_job_research_agent(search_id: str, preferences: UserPreferences):
         query = f"{' '.join(preferences.target_roles)} {' '.join(preferences.preferred_locations)} {preferences.employment_type}"
         await update_status("processing", f"Discovering job listings matching: '{query}'...", 2)
         
-        discovery_provider = MockSearchProvider()
+        # Use RealWebSearchProvider if SEARCH_API_KEY is present or fallback to updated MockSearchProvider
+        from backend.services.discovery_service import RealWebSearchProvider
+        if os.getenv("SEARCH_API_KEY"):
+            discovery_provider = RealWebSearchProvider()
+        else:
+            discovery_provider = MockSearchProvider()
+
         raw_jobs = await discovery_provider.search(query)
         await asyncio.sleep(0.8)
 

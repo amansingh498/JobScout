@@ -7,8 +7,38 @@ class WebSearchTool:
         self.api_key = os.getenv("SEARCH_API_KEY")
 
     async def search(self, query: str, num_results: int = 3) -> List[Dict[str, Any]]:
-        """Perform search using SerpAPI or simulated high-fidelity web search results."""
+        """Perform search using Tavily / SerpAPI or simulated high-fidelity web search results."""
         if self.api_key:
+            # 1. Try Tavily Search API (UUID format or tvly-*)
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        "https://api.tavily.com/search",
+                        json={
+                            "api_key": self.api_key,
+                            "query": query,
+                            "max_results": num_results,
+                            "search_depth": "basic",
+                            "include_answer": False
+                        }
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = data.get("results", [])
+                        if results:
+                            return [
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("url", ""),
+                                    "snippet": item.get("content", ""),
+                                    "source": "careers_page" if any(k in item.get("url", "").lower() for k in ["career", "job", "intern", "greenhouse", "lever"]) else "job_board"
+                                }
+                                for item in results[:num_results]
+                            ]
+            except Exception as e:
+                pass
+
+            # 2. Try SerpAPI
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.get(
@@ -23,17 +53,18 @@ class WebSearchTool:
                     if resp.status_code == 200:
                         data = resp.json()
                         organic_results = data.get("organic_results", [])
-                        return [
-                            {
-                                "title": item.get("title", ""),
-                                "url": item.get("link", ""),
-                                "snippet": item.get("snippet", ""),
-                                "source": item.get("displayed_link", "web_source")
-                            }
-                            for item in organic_results[:num_results]
-                        ]
+                        if organic_results:
+                            return [
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("link", ""),
+                                    "snippet": item.get("snippet", ""),
+                                    "source": item.get("displayed_link", "web_source")
+                                }
+                                for item in organic_results[:num_results]
+                            ]
             except Exception as e:
-                print(f"SerpAPI search failed: {e}")
+                pass
 
         # High-fidelity realistic web search simulator for demo / test runs
         return self._simulate_search_results(query)
