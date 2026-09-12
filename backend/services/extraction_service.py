@@ -89,11 +89,22 @@ Text:
             except ValueError:
                 pass
 
-        # Skills extraction
-        skills_match = re.search(r'Skills:\s*(.+)', text, re.IGNORECASE)
+        # Skills extraction: safely capture up to the sentence end or next section header
         skills = []
+        skills_match = re.search(r'Skills:\s*([^.\n\r]+)', text, re.IGNORECASE)
         if skills_match:
-            skills = [s.strip().rstrip('.') for s in skills_match.group(1).split(',')]
+            raw_skills = skills_match.group(1).split(',')
+            for s in raw_skills:
+                cleaned = s.strip().rstrip('.')
+                # Filter out accidental compensation, location, or malformed text
+                if cleaned and not any(bad in cleaned.lower() for bad in ['compensation', 'stipend', 'location', '₹', '$', 'month', 'per month', '/ mo', '/mo']):
+                    if len(cleaned) <= 35:
+                        skills.append(cleaned)
+
+        # Supplement with deterministic skills from text if empty
+        if not skills:
+            from backend.services.resume_service import extract_skills_from_text
+            skills = extract_skills_from_text(text)
 
         data = {
             "title": title,
@@ -106,7 +117,7 @@ Text:
             "stipend_max": stipend_val,
             "salary_min": None,
             "salary_max": None,
-            "skills": skills
+            "skills": list(dict.fromkeys(skills))
         }
         return self._create_job_instance(data, raw_job)
 

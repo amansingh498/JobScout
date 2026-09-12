@@ -122,53 +122,75 @@ export function JobCard({ job, rank }: JobCardProps) {
       </div>
 
       {/* 🎯 Resume Skills Alignment: Matched vs Skill Gaps */}
-      {job.matched_skills && job.matched_skills.length > 0 ? (
-        <div className="space-y-2 pt-1">
-          {/* Matched from Resume */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1 mr-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Resume Matches:
-            </span>
-            {job.matched_skills.map((skill, i) => (
-              <span
-                key={i}
-                className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-200 border border-emerald-500/30 flex items-center gap-1 shadow-sm"
-              >
-                ✓ {skill}
-              </span>
-            ))}
-          </div>
+      {(() => {
+        const cleanSkill = (s: string) => s.trim().replace(/\.$/, '');
+        const isValid = (s: string) => {
+          const low = s.toLowerCase();
+          return !low.includes('compensation') && !low.includes('stipend') && !low.includes('location') && !low.includes('₹') && !low.includes('$') && !low.includes('month') && s.length <= 30;
+        };
 
-          {/* Skill Gaps to Prepare */}
-          {job.missing_skills_gap && job.missing_skills_gap.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 mr-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Skill Gaps (To Prep):
-              </span>
-              {job.missing_skills_gap.map((skill, i) => (
+        const validMatched = (job.matched_skills || []).map(cleanSkill).filter(isValid);
+        const validGaps = (job.missing_skills_gap || []).map(cleanSkill).filter(isValid);
+        const validSkills = (job.skills || []).map(cleanSkill).filter(isValid);
+
+        if (validMatched.length > 0 || validGaps.length > 0) {
+          return (
+            <div className="space-y-2 pt-1">
+              {/* Matched from Resume */}
+              {validMatched.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Resume Matches:
+                  </span>
+                  {validMatched.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-200 border border-emerald-500/30 flex items-center gap-1 shadow-sm"
+                    >
+                      ✓ {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Skill Gaps to Prepare */}
+              {validGaps.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Skill Gaps (To Prep):
+                  </span>
+                  {validGaps.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (validSkills.length > 0) {
+          return (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Skills:</span>
+              {validSkills.map((skill, i) => (
                 <span
                   key={i}
-                  className="text-xs font-medium px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
+                  className="text-xs font-semibold px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 shadow-sm"
                 >
                   {skill}
                 </span>
               ))}
             </div>
-          )}
-        </div>
-      ) : job.skills && job.skills.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Skills:</span>
-          {job.skills.map((skill, i) => (
-            <span
-              key={i}
-              className="text-xs font-semibold px-3 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 shadow-sm"
-            >
-              {skill}
-            </span>
-          ))}
-        </div>
-      ) : null}
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Missing Fields Flag if any */}
       {job.missing_fields && job.missing_fields.length > 0 && (
